@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Руководство пользователя: Виджет навигации</title>
+    <style>
+        /* Общие стили */
+        :root {
+            --primary: #00bcd4;
+            --primary-dark: #008ba3;
+            --bg-color: #f4f7f6;
+            --text-main: #333;
+            --text-muted: #666;
+            --sidebar-bg: #1e1e2f;
+            --card-bg: #ffffff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); overflow-x: hidden; display: flex; }
+
+        /* 1. СТАРТОВЫЙ ЭКРАН (СПЛЭШ) */
+        .splash-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+            background-color: var(--sidebar-bg);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 9999; transition: opacity 0.8s ease-in-out, visibility 0.8s;
+        }
+        
+        /* Анимация появления логотипа */
+        .platform-logo {
+            max-width: 350px;
+            height: auto;
+            opacity: 0; 
+            transform: scale(0.8);
+            animation: fadeInScale 1.5s forwards ease-out;
+        }
+
+        .splash-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+        @keyframes fadeInScale {
+            0% { opacity: 0; transform: scale(0.8); filter: blur(10px); }
+            50% { filter: blur(0); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* 2. БОКОВАЯ ПАНЕЛЬ */
+        .sidebar {
+            width: 280px; background: var(--sidebar-bg); color: #fff;
+            height: 100vh; position: fixed; padding: 30px 20px;
+            overflow-y: auto; transform: translateX(-100%);
+            transition: transform 0.8s ease-in-out; z-index: 100;
+        }
+        .sidebar.visible { transform: translateX(0); }
+        .sidebar h2 { color: var(--primary); font-size: 1.2rem; margin-bottom: 20px; }
+        .sidebar ul { list-style: none; }
+        .sidebar li { margin-bottom: 15px; }
+        .sidebar a { color: #a0a0b5; text-decoration: none; transition: color 0.2s; font-weight: 500;}
+        .sidebar a:hover { color: #fff; }
+		
+
+        /* 3. ОСНОВНОЙ КОНТЕНТ */
+        .main-content {
+            margin-left: 280px; padding: 40px 60px; max-width: 1000px;
+            opacity: 0; transform: translateY(20px);
+            transition: opacity 1s ease-in-out, transform 1s ease-in-out; width: 100%;
+        }
+        .main-content.visible { opacity: 1; transform: translateY(0); }
+        
+        h1 { color: var(--sidebar-bg); margin-bottom: 10px; font-size: 2.2rem;}
+        h2 { color: var(--primary-dark); margin-top: 30px; margin-bottom: 15px; font-size: 1.5rem; border-bottom: 2px solid #e0e0e0; padding-bottom: 5px;}
+        p { line-height: 1.6; margin-bottom: 15px; }
+        
+        .card { background: var(--card-bg); padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px; }
+        
+        /* Таблицы */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; color: var(--sidebar-bg); }
+
+        /* Подсказки и Troubleshooting (Accordions) */
+        details { background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px 15px; margin-bottom: 15px; border-radius: 0 4px 4px 0; cursor: pointer; }
+        details[open] summary ~ * { animation: sweep .5s ease-in-out; }
+        summary { font-weight: bold; color: #856404; outline: none; }
+        summary::-webkit-details-marker { color: #856404; }
+        details p { margin-top: 10px; margin-bottom: 0; font-size: 0.95rem; }
+
+        @keyframes sweep {
+            0%    {opacity: 0; transform: translateY(-10px)}
+            100%  {opacity: 1; transform: translateY(0)}
+        }
+
+        /* 4. ГЕНЕРАТОР JSON */
+        .json-generator { display: flex; gap: 20px; margin-top: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .json-output-area { flex: 1; background: #272822; padding: 15px; border-radius: 8px; position: relative; }
+        pre { color: #f8f8f2; font-family: monospace; white-space: pre-wrap; word-wrap: break-word; }
+        .btn { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        .btn:hover { background: var(--primary-dark); }
+        .btn-video { background: #ff0000; display: inline-flex; align-items: center; gap: 8px; margin-top: 10px;}
+        .btn-video:hover { background: #cc0000; }
+
+        /* 5. ПЕСОЧНИЦА ИКОНОК */
+        .icon-card { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px 15px; text-align: center; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .icon-card:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,188,212,0.15); }
+        
+        .icon-card svg { width: 36px; height: 36px; fill: #64748b; transition: all 0.2s ease; }
+        .icon-card:hover svg { fill: var(--primary); transform: scale(1.1); }
+        
+        /* Стили для stroke-иконок */
+        .icon-card svg[stroke="currentColor"] { fill: none !important; stroke: #64748b; }
+        .icon-card:hover svg[stroke="currentColor"] { fill: none !important; stroke: var(--primary); }
+
+        .icon-card span { display: block; margin-top: 12px; font-family: monospace; font-size: 0.9rem; font-weight: bold; color: var(--text-main); }
+
+        /* 6. МОДАЛЬНОЕ ОКНО ВИДЕО */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 10000; opacity: 0; visibility: hidden; transition: 0.3s; }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content { background: #000; padding: 10px; border-radius: 8px; width: 80%; max-width: 900px; position: relative; }
+        .close-modal { position: absolute; top: -30px; right: -30px; color: white; font-size: 30px; cursor: pointer; background: none; border: none; }
+        .video-container { position: relative; padding-bottom: 56.25%; /* 16:9 */ height: 0; overflow: hidden; }
+        .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+        /* Всплывающее уведомление (Toast) */
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #333; color: #fff; padding: 12px 24px; border-radius: 4px; opacity: 0; transition: opacity 0.3s; z-index: 1000;}
+        .toast.show { opacity: 1; }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; padding: 20px; }
+            .json-generator { flex-direction: column; }
+        }
+		.icon-row {
+            display: flex;
+            gap: 8px;
+            justify-content: space-between;
+            background: #fdfdfd;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .icon-card-mini {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 4px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 0;
+        }
+
+        .icon-card-mini:hover {
+            border-color: var(--primary);
+            background: #f0fbfc;
+            transform: translateY(-2px);
+        }
+
+        .icon-card-mini svg {
+            width: 20px;
+            height: 20px;
+            stroke: #64748b;
+            margin-bottom: 5px;
+        }
+
+        .icon-card-mini:hover svg {
+            stroke: var(--primary);
+        }
+
+        .icon-card-mini span {
+            font-size: 0.75rem;
+            font-family: monospace;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            text-align: center;
+        }
+		/* Стили для песочницы масштабирования */
+.scaling-sandbox {
+    display: flex;
+    gap: 30px;
+    background: #fdfdfd;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 25px;
+    margin-top: 25px;
+    align-items: flex-start; /* Фиксируем всё по верхней линии */
+}
+
+.sandbox-controls {
+    flex: 1.2;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px 25px;
+    margin: 0;
+}
+
+.sandbox-controls .form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.sandbox-controls label {
+    font-size: 0.85rem;
+    font-weight: bold;
+    margin-bottom: 6px;
+    line-height: 1;
+    color: #333;
+}
+
+.sandbox-controls label span:not(.unit) {
+    color: #008ba3; /* Тот самый primary-dark из вашего руководства */
+    margin: 0 4px;
+}
+
+.sandbox-controls .unit {
+    font-weight: normal;
+    color: #888;
+    font-size: 0.75rem;
+}
+
+.sandbox-view {
+    flex: 1;
+    height: 300px; /* Высота теперь четко совпадает с 4 рядами ползунков */
+    background: #f0f0f0;
+    border: 1px solid #d0d0d0;
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    background-image: radial-gradient(#d1d1d1 1px, transparent 1px);
+    background-size: 15px 15px;
+}
+
+.preview-button {
+    position: absolute;
+    background: #1e1e2f;
+    color: #00bcd4;
+    border: 1px solid #00bcd4;
+    text-align: center;
+    font-weight: bold;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    z-index: 2;
+    transition: all 0.1s ease;
+}
+
+.preview-plan-label {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    font-size: 9px;
+    color: #bbb;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    pointer-events: none;
+}
+/* === РАСШИРЕННАЯ НАВИГАЦИЯ === */
+.nav-main { list-style: none; padding: 0; }
+.nav-item { margin-bottom: 8px; }
+.nav-link { 
+    color: #fff; 
+    text-decoration: none; 
+    font-weight: 600; 
+    font-size: 1rem;
+    display: block; 
+    padding: 8px 12px; 
+    border-radius: 6px; 
+    transition: all 0.2s;
+    background: rgba(255,255,255,0.05);
+}
+.nav-link:hover { background: rgba(0,188,212,0.2); color: #00bcd4; }
+.nav-sub { 
+    list-style: none; 
+    padding-left: 16px; 
+    margin-top: 4px; 
+    margin-bottom: 12px;
+    border-left: 2px solid rgba(0,188,212,0.3);
+}
+.nav-sub li { margin-bottom: 4px; }
+.nav-sub a { 
+    color: #a0a0b5; 
+    text-decoration: none; 
+    font-size: 0.85rem; 
+    padding: 4px 8px;
+    display: block;
+    border-radius: 4px;
+    transition: all 0.15s;
+}
+.nav-sub a:hover { color: #00bcd4; background: rgba(0,188,212,0.1); }
+html { scroll-behavior: smooth; }
+
+/* === КОМПАКТНАЯ ПЕСОЧНИЦА === */
+.scaling-sandbox {
+    display: flex;
+    gap: 20px;
+    background: linear-gradient(145deg, #f8f9fa, #eef1f4);
+    border: 1px solid #d0d8dc;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-top: 20px;
+    align-items: stretch;
+}
+.sandbox-controls {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 16px;
+    align-content: start;
+}
+.sandbox-controls .form-group {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    min-width: 0;
+}
+.sandbox-controls label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    line-height: 1.2;
+    color: #455a64;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sandbox-controls label span:not(.unit) {
+    color: var(--primary-dark);
+    font-weight: 700;
+    margin: 0 3px;
+}
+.sandbox-controls .unit {
+    font-weight: 400;
+    color: #90a4ae;
+    font-size: 0.7rem;
+    margin-left: 2px;
+}
+.sandbox-controls input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #cfd8dc;
+    outline: none;
+    margin: 4px 0 2px;
+    cursor: pointer;
+}
+.sandbox-controls input[type="range"]:hover {
+    background: #b0bec5;
+}
+.sandbox-controls input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, var(--primary), var(--primary-dark));
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,188,212,0.4), 0 0 0 3px rgba(0,188,212,0.1);
+    cursor: grab;
+    transition: all 0.15s ease;
+}
+.sandbox-controls input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 2px 8px rgba(0,188,212,0.5), 0 0 0 4px rgba(0,188,212,0.15);
+}
+.sandbox-controls input[type="range"]::-webkit-slider-thumb:active {
+    cursor: grabbing;
+    transform: scale(1.05);
+}
+.sandbox-view {
+    flex: 0 0 220px;
+    height: 220px;
+    background: #f0f2f5;
+    border: 1px solid #c8d0d5;
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    background-image: 
+        linear-gradient(rgba(200,208,213,0.3) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200,208,213,0.3) 1px, transparent 1px);
+    background-size: 20px 20px;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.04);
+}
+.preview-button {
+    position: absolute;
+    background: linear-gradient(145deg, #1e1e2f, #2a2a40);
+    color: var(--primary);
+    border: 1.5px solid var(--primary);
+    text-align: center;
+    font-weight: 600;
+    line-height: 1.15;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.18);
+    z-index: 2;
+    transition: all 0.12s ease;
+    letter-spacing: 0.3px;
+}
+.preview-plan-label {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    font-size: 8px;
+    color: #b0bec5;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    pointer-events: none;
+    font-weight: 500;
+    </style>
+</head>
+<body>
+
+<div class="splash-screen" id="splashScreen">
+        <svg
+   class="platform-logo"
+           version="1.1"
+           id="svg1"
+           width="2383.5732"
+           height="340"
+           viewBox="0 0 2383.5732 340"
+           sodipodi:docname="лого_СП_белый.ai"
+           xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+           xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+           xmlns="http://www.w3.org/2000/svg"
+           xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1">
+    <linearGradient
+       x1="0"
+       y1="0"
+       x2="1"
+       y2="0"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(0,-246.9239,246.9239,0,122.64994,248.59375)"
+       spreadMethod="pad"
+       id="linearGradient2">
+      <stop
+         style="stop-opacity:1;stop-color:#ceb4ff"
+         offset="0"
+         id="stop1" />
+      <stop
+         style="stop-opacity:1;stop-color:#7e3aff"
+         offset="1"
+         id="stop2" />
+    </linearGradient>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath2">
+      <path
+         d="M 0,248.594 H 245.3 V 0.988998 H 0 Z"
+         id="path2" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath4">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="matrix(1.3333333,0,0,-1.3333333,0,340)"
+         id="path4" />
+    </clipPath>
+    <linearGradient
+       x1="0"
+       y1="0"
+       x2="1"
+       y2="0"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(-159.3147,0,0,-159.3147,206.606,205.86336)"
+       spreadMethod="pad"
+       id="linearGradient5">
+      <stop
+         style="stop-opacity:1;stop-color:#ceb4ff"
+         offset="0"
+         id="stop4" />
+      <stop
+         style="stop-opacity:1;stop-color:#7e3aff"
+         offset="1"
+         id="stop5" />
+    </linearGradient>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath5">
+      <path
+         d="M 0,254.945 H 231.311 V 156.781 H 0 Z"
+         id="path5" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath7">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="matrix(1.3333333,0,0,-1.3333333,0,340)"
+         id="path7" />
+    </clipPath>
+    <linearGradient
+       x1="0"
+       y1="0"
+       x2="1"
+       y2="0"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(0,-238.12869,238.12869,0,209.61301,247.30469)"
+       spreadMethod="pad"
+       id="linearGradient8">
+      <stop
+         style="stop-opacity:1;stop-color:#ceb4ff"
+         offset="0"
+         id="stop7" />
+      <stop
+         style="stop-opacity:1;stop-color:#7e3aff"
+         offset="1"
+         id="stop8" />
+    </linearGradient>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath8">
+      <path
+         d="m 169.529,247.305 h 80.168 V 4.95691 h -80.168 z"
+         id="path8" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath10">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="matrix(1.3333333,0,0,-1.3333333,0,340)"
+         id="path10" />
+    </clipPath>
+    <linearGradient
+       x1="0"
+       y1="0"
+       x2="1"
+       y2="0"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(176.2356,-179.80104,179.80104,176.2356,248.12393,244.43071)"
+       spreadMethod="pad"
+       id="linearGradient12">
+      <stop
+         style="stop-opacity:1;stop-color:#7e3aff"
+         offset="0"
+         id="stop10" />
+      <stop
+         style="stop-opacity:1;stop-color:#ceb4ff"
+         offset="0.432692"
+         id="stop11" />
+      <stop
+         style="stop-opacity:1;stop-color:#7e3aff"
+         offset="1"
+         id="stop12" />
+    </linearGradient>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath12">
+      <path
+         d="M 169.5,255.003 H 413.301 V 1.39799 H 169.5 Z"
+         id="path12" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath14">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="matrix(1.3333333,0,0,-1.3333333,0,340)"
+         id="path14" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath17">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="translate(-723.72242,-93.879002)"
+         id="path17" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath19">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="translate(-820.3771,-84.628802)"
+         id="path19" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath21">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="translate(-843.61465,-124.27821)"
+         id="path21" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath23">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="translate(-530.91881,-76.265904)"
+         id="path23" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath25">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="translate(-1637.2888,-95.860105)"
+         id="path25" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath27">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="translate(-1194.4879,-93.378205)"
+         id="path27" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath29">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="translate(-1751.5326,-94.014505)"
+         id="path29" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath31">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="translate(-1562.7046,-84.764305)"
+         id="path31" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath33">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="translate(-1218.3474,-124.2372)"
+         id="path33" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath35">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="translate(-957.95282,-60.943299)"
+         id="path35" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath37">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="translate(-1063.1418,-108.6051)"
+         id="path37" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath39">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="translate(-1375.6675,-83.967602)"
+         id="path39" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath41">
+      <path
+         d="M 0,255 H 1787.681 V 0 H 0 Z"
+         transform="translate(-1467.3237,-84.621302)"
+         id="path41" />
+    </clipPath>
+  </defs>
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1">
+    <inkscape:page
+       x="0"
+       y="0"
+       inkscape:label="1"
+       id="page1"
+       width="2383.5732"
+       height="340"
+       margin="1.318664 31.799999 0 0"
+       bleed="0" />
+  </sodipodi:namedview>
+  <g
+     id="layer-MC0"
+     inkscape:groupmode="layer"
+     inkscape:label="Слой 1">
+    <g
+       opacity="0.899994"
+       id="g3"
+       clip-path="url(#clipPath4)">
+      <path
+         d="m 0,157.696 c 0,5.827 2.346,11.428 6.469,15.553 l 75.023,75.345 V 104.11 c 0,-12.071 9.799,-21.873 21.868,-21.873 l 138.128,0.076 c 3.405,0 5.108,-4.125 2.648,-6.509 L 175.924,7.233 C 171.838,3.222 166.352,0.989 160.601,0.989 H 21.868 C 9.799,0.989 0,10.79 0,22.862 Z"
+         transform="matrix(1.3333333,0,0,-1.3333333,0,340)"
+         style="fill:url(#linearGradient2);stroke:none"
+         opacity="1"
+         clip-path="url(#clipPath2)"
+         id="path3" />
+    </g>
+    <g
+       opacity="0.899994"
+       id="g6"
+       clip-path="url(#clipPath7)">
+      <path
+         d="m 95.717,254.945 c -5.069,0 -9.912,-2.005 -13.468,-5.6 l -71.353,-71.75 c 0,0 -3.67,-3.784 -5.259,-5.26 C 2.383,169.232 0,164.047 0,156.781 c 7.869,16.424 21.451,16.651 21.451,16.651 H 142.29 c 4.956,0 9.723,1.93 13.279,5.412 l 75.742,76.101 z"
+         transform="matrix(1.3333333,0,0,-1.3333333,0,340)"
+         style="fill:url(#linearGradient5);stroke:none"
+         opacity="1"
+         clip-path="url(#clipPath5)"
+         id="path6" />
+    </g>
+    <g
+       opacity="0.899994"
+       id="g9"
+       clip-path="url(#clipPath10)">
+      <path
+         d="m 169.529,158.866 c 0,5.071 2.043,9.953 5.637,13.51 l 74.531,74.929 -0.075,-158.221 c 0,-5.108 -2.043,-9.99 -5.675,-13.547 L 174.296,5.793 c -1.816,-1.779 -4.729,-0.53 -4.729,1.968 v 151.105 z"
+         transform="matrix(1.3333333,0,0,-1.3333333,0,340)"
+         style="fill:url(#linearGradient8);stroke:none"
+         opacity="1"
+         clip-path="url(#clipPath8)"
+         id="path9" />
+    </g>
+    <g
+       opacity="0.899994"
+       id="g13"
+       clip-path="url(#clipPath14)">
+      <path
+         d="m 413.301,92.297 c 0,-5.828 -2.346,-11.429 -6.47,-15.554 L 331.808,1.398 v 150.484 c 0,12.072 -9.798,21.873 -21.867,21.873 h -119.72 c 0,0 -14.721,0 -20.721,-15.255 0,9.5 4.336,12.812 13.5,22 l 68,68.5 c 4.086,4.011 9.949,6.003 15.7,6.003 h 124.733 c 12.069,0 21.868,-9.801 21.868,-21.873 z"
+         transform="matrix(1.3333333,0,0,-1.3333333,0,340)"
+         style="fill:url(#linearGradient12);stroke:none"
+         opacity="1"
+         clip-path="url(#clipPath12)"
+         id="path13" />
+    </g>
+    <path
+       id="path15"
+       d="m 0,0 -29.053,40.181 h -10.778 v -74.909 h 12.429 V 17.699 L -3.878,-14.855 H 4.029 L 27.413,17.669 V -34.728 H 39.842 V 40.181 H 28.923 Z"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+       transform="matrix(1.3333333,0,0,-1.3333333,812.98547,212.02253)" />
+    <path
+       id="path16"
+       d="m 0,0 c 0,-4.218 -1.082,-7.907 -3.301,-11.277 -2.208,-3.357 -5.314,-6.019 -9.235,-7.917 -3.977,-1.928 -8.522,-2.906 -13.507,-2.906 -5.28,0 -9.471,1.134 -12.462,3.36 -2.817,2.105 -4.191,4.852 -4.191,8.392 0,3.301 1.215,5.886 3.718,7.9 2.647,2.134 6.03,3.175 10.347,3.175 L 0,0.727 Z m -3.19,40.488 c -4.786,2.367 -10.324,3.567 -16.458,3.567 -7.886,0 -14.766,-2.065 -20.445,-6.142 -5.727,-4.112 -9.567,-9.758 -11.421,-16.781 l -0.753,-2.848 h 12.603 l 0.523,1.536 c 1.289,3.796 3.616,6.729 7.105,8.962 3.512,2.246 7.725,3.387 12.525,3.387 6.012,0 10.66,-1.549 14.209,-4.728 3.478,-3.119 5.169,-7.199 5.169,-12.469 v -2.769 h -28.768 c -7.773,0 -14.128,-2.034 -18.887,-6.045 -4.874,-4.112 -7.341,-9.71 -7.341,-16.642 0,-7.142 2.696,-12.893 8.009,-17.092 5.151,-4.073 12.152,-6.137 20.804,-6.137 6.561,0 12.554,1.211 17.816,3.607 3.523,1.598 6.628,3.689 9.283,6.237 l 0.591,-8.755 h 10.922 v 48.003 c 0,5.58 -1.374,10.608 -4.087,14.954 C 5.498,34.665 1.665,38.08 -3.19,40.488"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+       transform="matrix(1.3333333,0,0,-1.3333333,964.9632,214.828)"
+       clip-path="url(#clipPath17)" />
+    <path
+       id="path18"
+       d="m 0,0 c -2.237,-4.058 -5.383,-7.267 -9.353,-9.541 -3.984,-2.287 -8.688,-3.445 -13.98,-3.445 -5.291,0 -10.021,1.163 -14.057,3.447 -4.01,2.28 -7.178,5.484 -9.409,9.535 V 0 c -2.252,4.084 -3.396,8.848 -3.396,14.149 0,5.21 1.144,9.926 3.396,14.017 2.231,4.051 5.399,7.255 9.409,9.53 4.04,2.29 8.77,3.452 14.057,3.452 5.288,0 9.992,-1.158 13.984,-3.445 C -5.383,35.429 -2.237,32.22 0,28.163 2.253,24.079 3.393,19.364 3.393,14.149 3.393,8.84 2.253,4.08 0,0 m -2.662,48.239 c -5.816,3.364 -12.495,5.066 -19.855,5.066 -6.879,0 -13.163,-1.485 -18.687,-4.413 -3.634,-1.927 -6.806,-4.386 -9.487,-7.344 l -0.582,9.988 H -62.351 V -50.599 h 12.429 v 36.467 c 2.636,-2.687 5.693,-4.944 9.138,-6.741 5.432,-2.834 11.58,-4.269 18.267,-4.269 7.36,0 14.039,1.701 19.855,5.066 5.831,3.374 10.428,8.116 13.651,14.091 3.209,5.927 4.834,12.702 4.834,20.134 0,7.434 -1.625,14.187 -4.834,20.073 -3.223,5.922 -7.817,10.637 -13.651,14.017"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+       transform="matrix(1.3333333,0,0,-1.3333333,1093.8361,227.1616)"
+       clip-path="url(#clipPath19)" />
+    <path
+       id="path20"
+       d="M 0,0 H 27.498 V -63.023 H 39.927 V 0 H 67.421 V 11.886 H 0 Z"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+       transform="matrix(1.3333333,0,0,-1.3333333,1124.8195,174.29573)"
+       clip-path="url(#clipPath21)" />
+    <path
+       id="path22"
+       d="m 0,0 c -4.353,-3.065 -9.571,-4.623 -15.505,-4.623 -5.01,0 -9.523,1.156 -13.418,3.432 -3.877,2.272 -6.931,5.474 -9.076,9.52 -2.175,4.092 -3.279,8.863 -3.279,14.183 0,5.317 1.104,10.088 3.279,14.183 2.145,4.044 5.191,7.219 9.061,9.438 3.896,2.242 8.415,3.378 13.433,3.378 5.595,0 10.601,-1.432 14.881,-4.256 3.614,-2.388 6.425,-5.674 8.483,-9.696 h 13.172 c -2.203,7.753 -6.615,14.084 -13.158,18.804 -6.717,4.85 -14.582,7.305 -23.378,7.305 -7.359,0 -14.012,-1.68 -19.777,-4.996 -5.793,-3.331 -10.365,-8.023 -13.588,-13.95 -3.213,-5.886 -4.837,-12.684 -4.837,-20.21 0,-7.521 1.624,-14.322 4.833,-20.213 3.227,-5.922 7.795,-10.638 13.581,-14.009 5.768,-3.363 12.426,-5.069 19.788,-5.069 9.084,0 17.052,2.507 23.684,7.458 6.45,4.817 10.966,11.531 13.502,19.899 H 8.426 C 6.54,6.231 3.754,2.645 0,0"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+       transform="matrix(1.3333333,0,0,-1.3333333,707.89173,238.31213)"
+       clip-path="url(#clipPath23)" />
+    <path
+       id="path24"
+       d="m 0,0 -29.052,40.181 h -10.779 v -74.909 h 12.43 V 17.699 L -3.877,-14.855 H 4.029 L 27.413,17.669 V -34.728 H 39.842 V 40.181 H 28.923 Z"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+       transform="matrix(1.3333333,0,0,-1.3333333,2183.0517,212.18653)"
+       clip-path="url(#clipPath25)" />
+    <path
+       id="path26"
+       d="m 0,0 c 0,-4.218 -1.082,-7.907 -3.301,-11.277 -2.208,-3.357 -5.314,-6.019 -9.235,-7.917 -3.977,-1.928 -8.522,-2.906 -13.507,-2.906 -5.28,0 -9.472,1.134 -12.462,3.36 -2.818,2.105 -4.191,4.852 -4.191,8.392 0,3.301 1.215,5.886 3.718,7.9 2.647,2.134 6.03,3.175 10.347,3.175 L 0,0.727 Z m -3.19,40.488 c -4.786,2.367 -10.324,3.567 -16.458,3.567 -7.887,0 -14.766,-2.065 -20.445,-6.142 -5.727,-4.112 -9.567,-9.758 -11.421,-16.781 l -0.753,-2.848 h 12.602 l 0.524,1.536 c 1.289,3.796 3.616,6.729 7.105,8.962 3.512,2.246 7.725,3.387 12.525,3.387 6.011,0 10.66,-1.549 14.209,-4.728 3.478,-3.119 5.169,-7.199 5.169,-12.469 v -2.769 h -28.768 c -7.773,0 -14.128,-2.034 -18.887,-6.045 -4.874,-4.112 -7.341,-9.71 -7.341,-16.642 0,-7.142 2.695,-12.893 8.009,-17.092 5.151,-4.073 12.152,-6.137 20.803,-6.137 6.562,0 12.555,1.211 17.817,3.607 3.522,1.598 6.628,3.689 9.283,6.237 l 0.591,-8.755 h 10.922 v 48.003 c 0,5.58 -1.374,10.608 -4.087,14.954 C 5.498,34.665 1.665,38.08 -3.19,40.488"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+       transform="matrix(1.3333333,0,0,-1.3333333,1592.6505,215.49573)"
+       clip-path="url(#clipPath27)" />
+    <path
+       id="path28"
+       d="m 0,0 c 0,-4.218 -1.083,-7.907 -3.302,-11.277 -2.207,-3.356 -5.313,-6.019 -9.234,-7.917 -3.977,-1.928 -8.523,-2.906 -13.508,-2.906 -5.28,0 -9.471,1.134 -12.461,3.361 -2.818,2.104 -4.192,4.852 -4.192,8.391 0,3.302 1.215,5.886 3.719,7.9 2.647,2.134 6.03,3.175 10.346,3.175 L 0,0.727 Z m 8.208,30.333 c -2.71,4.332 -6.543,7.747 -11.399,10.155 -4.785,2.367 -10.324,3.567 -16.457,3.567 -7.887,0 -14.766,-2.064 -20.446,-6.141 -5.727,-4.113 -9.567,-9.759 -11.421,-16.782 l -0.753,-2.848 h 12.603 l 0.524,1.536 c 1.289,3.796 3.615,6.729 7.104,8.964 3.512,2.244 7.725,3.385 12.525,3.385 6.012,0 10.661,-1.547 14.21,-4.726 3.478,-3.121 5.169,-7.201 5.169,-12.47 v -2.77 h -28.769 c -7.772,0 -14.127,-2.034 -18.887,-6.044 -4.874,-4.113 -7.34,-9.711 -7.34,-16.642 0,-7.143 2.695,-12.894 8.009,-17.093 5.151,-4.073 12.152,-6.137 20.803,-6.137 6.562,0 12.555,1.211 17.817,3.607 3.522,1.6 6.628,3.689 9.282,6.237 l 0.591,-8.755 h 10.923 v 48.003 c 0,5.58 -1.374,10.608 -4.088,14.954"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+       transform="matrix(1.3333333,0,0,-1.3333333,2335.3767,214.64733)"
+       clip-path="url(#clipPath29)" />
+    <path
+       id="path30"
+       d="m 0,0 c -2.238,-4.058 -5.383,-7.267 -9.353,-9.541 -3.984,-2.286 -8.688,-3.445 -13.98,-3.445 -5.291,0 -10.021,1.163 -14.057,3.449 -4.01,2.278 -7.178,5.483 -9.409,9.533 V 0 c -2.252,4.084 -3.396,8.848 -3.396,14.149 0,5.21 1.144,9.926 3.396,14.017 2.231,4.051 5.399,7.255 9.409,9.531 4.04,2.289 8.77,3.453 14.057,3.453 5.288,0 9.992,-1.16 13.984,-3.446 C -5.383,35.429 -2.238,32.221 0,28.163 2.253,24.079 3.393,19.364 3.393,14.149 3.393,8.84 2.253,4.08 0,0 m -2.662,48.24 c -5.816,3.363 -12.495,5.065 -19.855,5.065 -6.879,0 -13.164,-1.483 -18.687,-4.413 -3.634,-1.927 -6.806,-4.386 -9.487,-7.344 l -0.583,9.988 H -62.351 V -50.599 h 12.428 v 36.468 c 2.637,-2.688 5.694,-4.945 9.139,-6.742 5.432,-2.832 11.58,-4.269 18.267,-4.269 7.36,0 14.039,1.701 19.855,5.067 5.83,3.374 10.428,8.115 13.651,14.09 3.209,5.927 4.834,12.702 4.834,20.134 0,7.434 -1.625,14.187 -4.834,20.073 C 7.766,40.144 3.172,44.861 -2.662,48.24"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+       transform="matrix(1.3333333,0,0,-1.3333333,2083.6061,226.98093)"
+       clip-path="url(#clipPath31)" />
+    <path
+       id="path32"
+       d="M 0,0 H 27.498 V -63.023 H 39.927 V 0 H 67.421 V 11.886 H 0 Z"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+       transform="matrix(1.3333333,0,0,-1.3333333,1624.4632,174.3504)"
+       clip-path="url(#clipPath33)" />
+    <path
+       id="path34"
+       d="M 0,0 H 12.811 V 63.637 H 55.116 V 0 H 67.927 V 75.21 H 0 Z"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+       transform="matrix(1.3333333,0,0,-1.3333333,1277.2704,258.74227)"
+       clip-path="url(#clipPath35)" />
+    <path
+       id="path36"
+       d="m 0,0 c -0.278,-4.663 -0.592,-9.301 -0.959,-13.915 -0.363,-4.518 -0.995,-8.62 -1.885,-12.189 -0.855,-3.42 -2.117,-6.184 -3.753,-8.203 -1.501,-1.839 -3.425,-2.734 -5.896,-2.734 -0.358,0 -0.77,0.055 -1.233,0.164 -0.641,0.149 -1.307,0.274 -1.998,0.368 l -1.601,0.224 -0.924,-11.325 1.307,-0.283 c 1.307,-0.283 2.545,-0.512 3.728,-0.706 1.238,-0.194 2.451,-0.293 3.605,-0.293 4.245,0 7.795,1.372 10.554,4.081 2.634,2.58 4.727,6.184 6.224,10.713 1.446,4.38 2.53,9.52 3.226,15.277 0.691,5.712 1.178,11.762 1.452,17.971 l 0.86,16.42 h 31.686 v -63.637 h 12.811 v 75.21 H 1.307 Z"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+       transform="matrix(1.3333333,0,0,-1.3333333,1417.5224,195.1932)"
+       clip-path="url(#clipPath37)" />
+    <path
+       id="path38"
+       d="m 0,0 c -2.655,-3.942 -6.627,-7.014 -11.812,-9.132 -3.609,-1.472 -8.237,-2.401 -14.118,-2.834 v 52.74 C -20.049,40.352 -15.416,39.442 -11.802,38 -6.617,35.917 -2.64,32.895 0.005,29.002 2.66,25.11 4.007,20.288 4.007,14.675 4.007,8.869 2.66,3.932 0,0 m -38.468,-11.956 c -5.816,0.462 -10.439,1.432 -14.103,2.958 -5.1,2.118 -9.008,5.185 -11.618,9.122 -2.61,3.942 -3.937,8.834 -3.937,14.551 0,5.618 1.303,10.42 3.873,14.273 2.565,3.847 6.447,6.87 11.543,8.988 3.669,1.526 8.342,2.465 14.242,2.873 z M 3.858,42.887 c -7.204,5.632 -17.221,8.889 -29.788,9.689 V 81.901 H -38.468 V 52.591 C -51.05,51.825 -61.047,48.559 -68.196,42.882 -76.557,36.24 -80.798,26.75 -80.798,14.675 c 0,-12.249 4.216,-21.853 12.523,-28.54 7.213,-5.801 17.235,-9.107 29.807,-9.828 v -26.109 h 12.538 v 26.159 c 12.538,0.76 22.53,3.997 29.718,9.624 8.556,6.686 12.891,16.341 12.891,28.694 0,12.08 -4.315,21.57 -12.821,28.212"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+       transform="matrix(1.3333333,0,0,-1.3333333,1834.2233,228.0432)"
+       clip-path="url(#clipPath39)" />
+    <path
+       id="path40"
+       d="m 0,0 c -2.192,-3.992 -5.21,-7.124 -8.978,-9.306 -3.778,-2.193 -8.193,-3.301 -13.119,-3.301 -4.832,0 -9.172,1.108 -12.906,3.296 -3.728,2.187 -6.756,5.324 -8.988,9.321 -2.242,4.007 -3.38,8.724 -3.38,14.029 0,5.394 1.138,10.136 3.375,14.093 2.237,3.957 5.285,7.069 9.058,9.257 3.778,2.192 8.143,3.301 12.98,3.301 4.837,0 9.202,-1.109 12.98,-3.301 C -5.21,35.206 -2.187,32.094 0,28.142 2.202,24.175 3.316,19.433 3.316,14.039 3.316,8.734 2.197,4.012 0,0 m -2.302,47.326 c -5.756,3.276 -12.418,4.937 -19.795,4.937 -7.288,0 -13.875,-1.641 -19.577,-4.872 -5.712,-3.231 -10.295,-7.765 -13.626,-13.477 -3.331,-5.707 -5.021,-12.393 -5.021,-19.875 0,-7.288 1.685,-13.925 5.016,-19.726 3.326,-5.797 7.909,-10.405 13.621,-13.686 5.707,-3.281 12.299,-4.946 19.587,-4.946 7.288,0 13.924,1.66 19.721,4.941 5.806,3.281 10.414,7.87 13.7,13.626 3.281,5.752 4.942,12.408 4.942,19.791 0,7.477 -1.666,14.143 -4.947,19.805 -3.29,5.667 -7.869,10.201 -13.621,13.482"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+       transform="matrix(1.3333333,0,0,-1.3333333,1956.4316,227.1716)"
+       clip-path="url(#clipPath41)" />
+  </g>
+</svg>
+    </div>
+
+    </div>
+
+<nav class="sidebar" id="sidebar">
+    <h2>Оглавление</h2>
+    <ul class="nav-main">
+        <li class="nav-item">
+            <a href="#section-basics" class="nav-link">1. Базовая настройка</a>
+            <ul class="nav-sub">
+                <li><a href="#basics-add">1.1 Добавление виджета</a></li>
+                <li><a href="#basics-data">1.2 Источники данных</a></li>
+                <li><a href="#basics-params">1.3 Базовые параметры</a></li>
+            </ul>
+        </li>
+        <li class="nav-item">
+            <a href="#section-buttons" class="nav-link">2. Кнопки навигации</a>
+            <ul class="nav-sub">
+                <li><a href="#buttons-json">2.1 Формат JSON</a></li>
+                <li><a href="#buttons-params">2.2 Параметры</a></li>
+                <li><a href="#buttons-gen">2.3 Генератор</a></li>
+                <li><a href="#section-buttons">2.4 Иконки</a></li>
+                <li><a href="#buttons-scale">2.5 Масштабирование</a></li>
+            </ul>
+        </li>
+        <li class="nav-item">
+            <a href="#section-info" class="nav-link">3. Информационная панель</a>
+            <ul class="nav-sub">
+                <li><a href="#section-info">3.1 Параметры панели</a></li>
+                <li><a href="#info-alarms">3.2 Аварии и температура</a></li>
+                <li><a href="#info-chart">3.3 График температуры</a></li>
+            </ul>
+        </li>
+        <li class="nav-item">
+            <a href="#section-zones" class="nav-link">4. Интерактивные зоны</a>
+            <ul class="nav-sub">
+                <li><a href="#zones-json">4.1 Формат JSON</a></li>
+                <li><a href="#zones-params">4.2 Параметры зон</a></li>
+                <li><a href="#zones-features">4.3 Масштабирование</a></li>
+                <li><a href="#zones-editor">4.4 Встроенный редактор</a></li>
+                <li><a href="#zones-manual">4.5 Ручное редактирование</a></li>
+                <li><a href="#zones-list">4.6 Управление списком</a></li>
+            </ul>
+        </li>
+    </ul>
+</nav>
+
+    <main class="main-content" id="mainContent">
+        <header>
+            <h1>Виджет навигации</h1>
+            <p style="color: var(--text-muted);">Руководство по конфигурированию</p>
+        </header>
+
+        <section class="card" id="section-basics">
+            <h2>1. Базовая настройка и источники данных</h2>
+            <p>Виджет навигации показывает план объекта, следит за авариями и температурой, а также помогает быстро переключаться между связанными дашбордами.</p>
+
+            <h3 id="basics-add">Добавление виджета на дашборд</h3>
+            <ol style="margin-left: 20px; margin-bottom: 20px;">
+                <li>Откройте нужный дашборд в Смарт платформе.</li>
+                <li>В правом верхнем углу нажмите кнопку «Редактировать дашборд» (иконка карандаша).</li>
+                <li>Нажмите кнопку «Добавить виджет» в центре экрана.</li>
+                <li>Найдите набор виджетов «Навигация» и выберите виджет «Навигация здания v8». После этого откроется окно его настройки.</li>
+            </ol>
+
+            <h3 id="basics-data">Настройка источников данных</h3>
+            <p>Чтобы виджет вовремя реагировал на аварии и обновлял температуру, подключите к нему телеметрию.</p>
+            <p>Как это сделать:<p>
+            <ol style="margin-left: 20px; margin-bottom: 20px;">
+    <li>В блоке «Источники данных» нажмите «Добавить» (Add).</li>
+    <li><strong>«Тип источника»</strong> — выберите подходящий вариант, обычно это «Устройство».</li>
+    <li><strong>«Устройство»</strong> — укажите устройство, с которого виджет будет получать телеметрию.</li>
+    <li><strong>«Ключи данных»</strong> — впишите сюда все параметры телеметрии, которые понадобятся виджету (температура, общие аварии, аварии для конкретных кнопок).
+    </li>
+</ol>
+
+            <h3 id="basics-params">Базовые настройки</h3>
+            <p>Теперь, когда данные подключены, перейдите на вкладку «Внешний вид». В самом верху вы найдете базовые параметры:</p>
+            
+            <table>
+                <tr>
+                    <th>Название в интерфейсе </th>
+                    <th>Описание и настройка </th>
+                </tr>
+                <tr>
+                    <td><strong>Базовый URL</strong> </td>
+                    <td>Корневой адрес вашего стенда.<br><br>
+                        <details>
+                            <summary>⚠️ Важный момент</summary>
+                            <p>Если виджет работает на том же стенде, где вы его настраиваете, просто оставьте поле пустым. Заполняйте его, только если виджет должен ссылаться на дашборды с другого сервера.</p>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Подложка</strong> </td>
+                    <td>Фоновое изображение объекта, поверх которого отображаются кнопки навигации и интерактивные зоны.<br><br>Кликните на поле загрузки и выберите картинку из галереи Смарт Платформы (Используйте PNG, JPG или WebP). Подложка сама подстроится под размеры виджета без потери пропорций. При необходимости уменьшения веса или формата файла, воспользуйтесь сервисом <a href="https://squoosh.app/" target="_blank">Squoosh.app</a>. Загрузите подготовленную версию в галерею Смарт Платформы</td>
+                </tr>
+            </table>
+<p style="margin-top: 30px; margin-bottom: 15px;">Процесс базовой настройки виджета навигации и привязки источников данных продемонстрирован в этом видео:</p>
+            
+            <button class="btn btn-video" onclick="openVideo('https://github.com/AlexGasser00/Docs_vid/raw/main/section1.%20Base%20settings.mp4')">
+    ▶ : Базовая настройка и подключение данных
+</button>
+ <p>После загрузки фонового изображения можно переходить к детальной настройке интерфейса.</p>
+        </section>
+           
+        </section>
+
+        <section class="card" id="section-buttons">
+    <h2>2. Настройка кнопок навигации</h2>
+    <p>Виджет сам генерирует кнопки для перехода к инженерным системам или корпусам. Вы управляете их списком, порядком и настройками через один JSON-массив.</p>
+
+    <h3 id="buttons-json">Формат конфигурации</h3>
+    <p>Каждая кнопка — это отдельный блок (объект) внутри массива. Вот так выглядит настройка для двух кнопок:</p>
+    <div class="json-output-area" style="margin-bottom: 20px;">
+<pre>
+[
+  {
+    "id": 1,
+    "name": "СберСити",
+    "dashboardId": "54a51780-0279-11f1-ad6c-2fa7a6b600a9",
+    "column": "main",
+    "orderInColumn": 0,
+    "iconType": "apartment",
+    "alarmKey": ""
+  },
+  {
+    "id": 2,
+    "name": "Квартиры \n(корпус 1)",
+    "dashboardId": "268ce410-2784-11f1-9f64-c787c2280ca6",
+    "column": "main",
+    "orderInColumn": 1,
+    "iconType": "apartment",
+    "alarmKey": "alarms_apartments_1"
+  }
+]
+</pre>
+    </div>
+
+    <h3 id="buttons-params">Описание параметров</h3>
+
+    <table>
+        <tr>
+            <th>Параметр</th>
+            <th>Тип данных</th>
+            <th>Описание</th>
+        </tr>
+        <tr>
+            <td><strong>id</strong></td>
+            <td>Целое число</td>
+            <td>Уникальный номер кнопки. Нужен виджету, чтобы правильно привязать к ней аварии. Убедитесь, что номера не повторяются.</td>
+        </tr>
+        <tr>
+            <td><strong>name</strong></td>
+            <td>Строка</td>
+            <td>Название, которое появится на кнопке. Чтобы перенести текст на новую строку, вставьте <code>\n</code>.</td>
+        </tr>
+        <tr>
+            <td><strong>dashboardId</strong></td>
+            <td>Строка</td>
+            <td>Уникальный идентификатор (UUID) дашборда, который откроется по клику. Если оставить поле пустым, кнопка станет неактивной.<br><br>Что бы найти UUID откройте нужный целевой дашборд. В адресной строке браузера вы увидите ссылку вроде <code>https://ваш-домен.ru/dashboards/54a51780-0279-11f1-ad6c-2fa7a6b600a9</code>. Длинный код сразу после <code>/dashboards/</code> — это и есть нужный UUID.</td>
+        </tr>
+        <tr>
+            <td><strong>column</strong></td>
+            <td>Строка</td>
+            <td>Идентификатор колонки. В текущей версии виджета всегда пишите <code>"main"</code>.</td>
+        </tr>
+        <tr>
+            <td><strong>orderInColumn</strong></td>
+            <td>Целое число</td>
+            <td>Позиция кнопки в списке сверху вниз. 0 — самая верхняя, 1 — под ней и так далее. Если нужно поменять кнопки местами, просто измените эти индексы.</td>
+        </tr>
+        <tr>
+            <td><strong>iconType</strong></td>
+            <td>Строка</td>
+            <td>Название векторной иконки для кнопки (список доступных вариантов смотрите в разделе "Генератор кнопок навигации").</td>
+        </tr>
+        <tr>
+            <td><strong>alarmKey</strong></td>
+            <td>Строка</td>
+            <td>Ключ телеметрии, по которому кнопка будет отслеживать аварии.</td>
+        </tr>
+    </table>
+
+    <h3 style="margin-top: 30px;"><h3 id="buttons-gen">Генератор кнопок навигации</h3>
+    <p>Чтобы не писать код с нуля, создайте первую кнопку через генератор. Затем просто скопируйте результат и используйте его как шаблон.</p>
+    
+    <div class="json-generator">
+        <div style="flex: 1;">
+            <div class="form-group">
+                <label>ID кнопки (Уникальное число)</label>
+                <input type="number" id="gen-id" value="1" oninput="updateJson()">
+            </div>
+            <div class="form-group">
+                <label>Название (Используйте \n для переноса)</label>
+                <input type="text" id="gen-name" value="СберСити\n(Корпус 1)" oninput="updateJson()">
+            </div>
+            <div class="form-group">
+                <label>UUID целевого дашборда</label>
+                <input type="text" id="gen-dash" value="54a51780-0279-11f1-ad6c-2fa7a6b600a9" oninput="updateJson()">
+            </div>
+            <div class="form-group">
+                <label>Тип иконки</label>
+                <select id="gen-icon" onchange="updateJson()">
+                    <option value="apartment">apartment</option>
+                    <option value="climate">climate</option>
+                    <option value="hvac">hvac</option>
+                    <option value="water">water</option>
+                    <option value="gas">gas</option>
+                    <option value="lightning">lightning</option>
+                    <option value="security">security</option>
+                    <option value="commerce">commerce</option>
+                    <option value="pc">pc</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Ключ аварии (alarmKey)</label>
+                <input type="text" id="gen-alarm" value="alarms_apartments_1" oninput="updateJson()">
+            </div>
+        </div>
+        
+        <div class="json-output-area">
+            <pre id="json-output"></pre>
+            <button class="btn" style="position: absolute; bottom: 15px; right: 15px;" onclick="copyJson()">📋 Копировать JSON</button>
+        </div>
+    </div>
+
+    <div style="margin-top: 25px;">
+        <p style="margin-bottom: 10px; font-size: 0.95rem;">Доступные в текущей реализации векторные иконки приведен ниже:</p>
+        <div class="icon-row">
+            <div class="icon-card-mini" onclick="copyText('hvac')" title="Кликните, чтобы скопировать">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z"/><path d="M12 12v.01"/></svg>
+                <span>hvac</span>
+            </div>
+            <div class="icon-card-mini" onclick="copyText('commerce')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 11h8a4 4 0 0 0 0-8H9v18"/><path d="M6 15h8"/></svg>
+                <span>commerce</span>
+            </div>
+            <div class="icon-card-mini" onclick="copyText('pc')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="8" x="5" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 18h2"/><path d="M12 18h6"/></svg>
+                <span>pc</span>
+            </div>
+            <div class="icon-card-mini" onclick="copyText('security')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="12" cy="12" r="3"/></svg>
+                <span>security</span>
+            </div>
+            <div class="icon-card-mini" onclick="copyText('climate')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>
+                <span>climate</span>
+            </div>
+            <div class="icon-card-mini" onclick="copyText('water')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                <span>water</span>
+            </div>
+            <div class="icon-card-mini" onclick="copyText('gas')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21c0-2.5 2-2.5 2-5"/><path d="m19 8-.8 3a1.25 1.25 0 0 1-1.2 1H7a1.25 1.25 0 0 1-1.2-1L5 8"/><path d="M21 3a1 1 0 0 1 1 1v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a1 1 0 0 1 1-1z"/><path d="M6 21c0-2.5 2-2.5 2-5"/></svg>
+                <span>gas</span>
+            </div>
+            <div class="icon-card-mini" onclick="copyText('lightning')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+                <span>lightning</span>
+            </div>
+            <div class="icon-card-mini" onclick="copyText('apartment')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg>
+                <span>apartment</span>
+            </div>
+        </div>
+    </div>
+
+    <p style="margin-top: 40px;">Скопируйте готовый код в поле "Конфигурация кнопок навигации (JSON)" (раздел "НАСТРОЙКИ НАВИГАЦИОННЫХ КНОПОК" в виджете).</p>
+	
+	<div style="margin-top: 20px;">
+    <h3 id="buttons-scale">Настройка размеров и масштабирования</h3>
+    <p>Вы можете гибко менять размеры и положение кнопок, чтобы они аккуратно вписывались на подложку.</p>
+
+    <table>
+        <tr>
+            <th>Название в интерфейсе</th>
+            <th>Ед. изм.</th>
+            <th>Описание</th>
+        </tr>
+        <tr>
+            <td><strong>Ширина кнопок</strong></td>
+            <td>px</td>
+            <td>Ширина каждой кнопки (120–300 px). Увеличьте, если длинные названия не помещаются.</td>
+        </tr>
+        <tr>
+            <td><strong>Высота кнопок</strong></td>
+            <td>px</td>
+            <td>Высота кнопки (40–100 px).</td>
+        </tr>
+        <tr>
+            <td><strong>Размер шрифта</strong></td>
+            <td>px</td>
+            <td>Базовый размер текста на кнопках (8-16 px).</td>
+        </tr>
+        <tr>
+            <td><strong>Расстояние между кнопками</strong></td>
+            <td>px</td>
+            <td>Вертикальный зазор между кнопками в колонке (0-50 px).</td>
+        </tr>
+        <tr>
+            <td><strong>Отступ первой кнопки</strong></td>
+            <td>px</td>
+            <td>Насколько первая кнопка опущена от верхнего края виджета (0-100 px).</td>
+        </tr>
+        <tr>
+            <td><strong>Смещение колонки (X)</strong></td>
+            <td>%</td>
+            <td>Смещение всей колонки влево-вправо: 0% — слева, 50% — по центру, 100% — справа.</td>
+        </tr>
+        <tr>
+            <td><strong>Смещение колонки (Y)</strong></td>
+            <td>%</td>
+            <td>Дополнительное смещение всей колонки вниз.</td>
+        </tr>
+    </table>
+	<p>Чтобы понять, как эти параметры влияют на внешний вид, воспользуйтесь этим симулятором:<p>
+    <div class="scaling-sandbox">
+    <div class="sandbox-controls">
+        <div class="form-group">
+            <label>Ширина: <span id="val-w">160</span><span class="unit">px</span></label>
+            <input type="range" id="range-w" min="120" max="300" value="160" oninput="previewScaling()">
+        </div>
+        <div class="form-group">
+            <label>Высота: <span id="val-h">50</span><span class="unit">px</span></label>
+            <input type="range" id="range-h" min="40" max="100" value="50" oninput="previewScaling()">
+        </div>
+        <div class="form-group">
+            <label>Шрифт: <span id="val-f">13</span><span class="unit">px</span></label>
+            <input type="range" id="range-f" min="10" max="24" value="13" oninput="previewScaling()">
+        </div>
+        <div class="form-group">
+            <label>Зазор: <span id="val-s">10</span><span class="unit">px</span></label>
+            <input type="range" id="range-s" min="0" max="50" value="10" oninput="previewScaling()">
+        </div>
+        <div class="form-group">
+            <label>X-позиция: <span id="val-x">10</span><span class="unit">%</span></label>
+            <input type="range" id="range-x" min="0" max="100" value="10" oninput="previewScaling()">
+        </div>
+        <div class="form-group">
+            <label>Y-смещение: <span id="val-y">0</span><span class="unit">%</span></label>
+            <input type="range" id="range-y" min="0" max="100" value="0" oninput="previewScaling()">
+        </div>
+        <div class="form-group">
+            <label>Отступ первой кнопки: <span id="val-top">20</span><span class="unit">px</span></label>
+            <input type="range" id="range-top" min="0" max="200" value="20" oninput="previewScaling()">
+        </div>
+        <div class="form-group" style="visibility: hidden;"></div>
+    </div>
+    
+    <div class="sandbox-view" id="sandbox-view">
+        <div id="preview-btn-1" class="preview-button">СберСити\n(Корпус 1)</div>
+        <div id="preview-btn-2" class="preview-button">Вентиляция\n(Этаж 2)</div>
+        <div class="preview-plan-label">Превью (Область виджета)</div>
+    </div>
+</div>
+        </div>
+
+    <p style="margin-top: 30px; margin-bottom: 15px;"> Подробный процесс настройки кнопок навигации, работы с JSON-массивом продемонстрирован в этом видео::</p>
+            
+    <button class="btn btn-video" onclick="openVideo('https://github.com/AlexGasser00/Docs_vid/raw/main/section2.Buttons_config.mp4')">
+        ▶ : Настройка кнопок навигации
+    </button>
+    </section>
+</section>
+
+
+        <section class="card" id="section-info">
+            <h2>3. Информационная панель и графики</h2>
+            <p>Информационная панель (блок в правом верхнем углу) нужна для быстрого обзора показателей уличной температуры и количества активных аварий на объекте. По клику на панель открывается всплывающее окно с графиком температуры.</p>
+            
+            <p>Параметры этого блока находятся в разделе <b>«НАСТРОЙКИ ИНФОРМАЦИОННОЙ ПАНЕЛИ»</b>:</p>
+
+            <table>
+                <tr>
+                    <th>Название в интерфейсе</th>
+                    <th>В чем измеряется</th>
+                    <th>Описание</th>
+                </tr>
+                <tr>
+                    <td><strong>Заголовок информационной панели</strong></td>
+                    <td>Текст</td>
+                    <td>Текст слева от значения температуры (по умолчанию — «Уличная температура»). Он же служит кликабельной кнопкой для открытия графика.</td>
+                </tr>
+                <tr>
+                    <td><strong>Ширина панели</strong></td>
+                    <td>px</td>
+                    <td>Ширина всего блока. Если поставить 0, панель сама подстроится под размер текста.</td>
+                </tr>
+                <tr>
+                    <td><strong>Высота панели</strong></td>
+                    <td>px</td>
+                    <td>Высота информационной панели.</td>
+                </tr>
+                <tr>
+                    <td><strong>Размер шрифта заголовка</strong></td>
+                    <td>px</td>
+                    <td>Размер букв для текста из поля «Заголовок информационной панели».</td>
+                </tr>
+                <tr>
+                    <td><strong>Размер шрифта температуры</strong></td>
+                    <td>px</td>
+                    <td>Размер цифр, показывающих температуру.</td>
+                </tr>
+                <tr>
+                    <td><strong>Размер шрифта количества аварий</strong></td>
+                    <td>px</td>
+                    <td>Размер цифры счетчика аварий в правой части.</td>
+                </tr>
+                <tr>
+                    <td><strong>Размер шрифта подписи 'аварий'</strong></td>
+                    <td>px</td>
+                    <td>Размер слова «аварий» рядом со счетчиком.</td>
+                </tr>
+                <tr>
+                    <td><strong>Ключ температуры</strong></td>
+                    <td>Текст (Key)</td>
+                    <td>Ключ телеметрии, откуда виджет берет данные о температуре (например, <code>temperature_street_today</code>).</td>
+                </tr>
+                <tr>
+                    <td><strong>Ключ общих аварий</strong></td>
+                    <td>Текст (Key)</td>
+                    <td>Ключ телеметрии для счетчика аварий (например, <code>alarms_count</code>).</td>
+                </tr>
+                <tr>
+                    <td><strong>ID состояния для графика температуры</strong></td>
+                    <td>Текст (ID)</td>
+                    <td>Техническое имя состояния (State ID), которое откроет окно с графиком при клике.</td>
+                </tr>
+            </table>
+
+            <h3 id="info-alarms">Настройка мониторинга аварий и температуры</h3>
+            Панель наглядно сигнализирует об инцидентах:</p>
+<ul style="margin-left: 20px; margin-bottom: 15px;">
+    <li>Пока аварий нет (значение ключа равно 0), панель сохраняет стандартный вид.</li>
+    <li>При появлении хотя бы одной аварии, иконка и цифра счетчика окрашиваются в красный цвет.</li>
+            </ul>
+            <p>Чтобы это работало, пропишите ключи данных для температуры и аварий в настройках виджета.</p>
+            
+            <details>
+                <summary>⚠️ Важное правило</summary>
+                <p>Перед тем как вписать ключи, убедитесь, что они добавлены во вкладку <b>«Данные»</b> (См. раздел "Базовая настройка"). Если виджет не найдет ключ в источнике данных, он ничего не покажет.</p>
+            </details>
+
+            <h3 style="margin-top: 25px;"><h3 id="info-chart">Настройка температурного графика</h3>
+            <p>Для открытия подробного графика температуры по нажатию на панель, нужно создать в дашборде новое «состояние» (State):</p>
+            
+            <ol style="margin-left: 20px; margin-bottom: 20px;">
+                <li>Перейдите в режим редактирования дашборда. Нажмите кнопку <b>«Состояния»</b> (иконка слоев на верхней панели).</li>
+                <li>Добавьте новое состояние (кнопка <b>+</b>) и заполните поля:
+                    <ul style="margin-top: 5px; margin-bottom: 5px; list-style-type: circle;">
+                        <li><b>"Имя" - </b> любое понятное название, например «График температуры на улице».</li>
+                        <li><b>"ID состояния (State ID)" - </b> короткий идентификатор, например <code>temp_chart</code>.</li>
+                    </ul>
+                </li>
+                <li>Сохраните изменения. Теперь вернитесь в настройки виджета навигации и впишите ваш <code>temp_chart</code> в поле «ID состояния для графика температуры».</li>
+                <li>Теперь кликните на информационную панель. Откроется пустое диалоговое окно. Нажмите <b>«Добавить новый виджет»</b>.</li>
+                <li>Найдите категорию <b>«Charts»</b> и выберите <b>«Line chart»</b>.</li>
+                <li>Настройте график: укажите устройство с уличной температурой, выберите "Использовать временной промежуток виджета" и установите временной интерва (например, 30 дней).</li>
+                <li>Растяните график на всё окно и сохраните дашборд.</li>
+            </ol>
+
+            <p style="margin-top: 30px; margin-bottom: 15px;">Весь процесс привязки ключей, создания состояний (States) и добавления графика показан в этом видео:</p>
+            
+            <button class="btn btn-video" onclick="openVideo('https://github.com/AlexGasser00/Docs_vid/raw/refs/heads/main/section3.info_panel_settings.mp4')">
+    ▶ : Настройка информационной панели и графиков
+</button>
+        </section>
+
+        <section class="card" id="section-zones">
+            <h2>4. Настройка интерактивных зон (Конфигуратор)</h2>
+            <p>Интерактивные зоны позволяют превратить обычное изображение подложки в динамическую карту. При наведении зона подсвечивается, а при клике — осуществляется переход на смежный дашборд.</p>
+
+            <h3 id="zones-json">Формат конфигурации зон (JSON)</h3>	
+            <p>Каждая зона — это отдельный блок в JSON-массиве. Найти этот массив можно в поле <b>«Конфигурация зон»</b> (раздел <b>«ИНТЕРАКТИВНЫЕ ЗОНЫ»</b>). Так выглядит код для одной зоны:</p>
+
+            <div class="json-output-area" style="margin-bottom: 20px;">
+<pre>
+[
+  {
+    "id": "zone_1778763382727_8jkm",
+    "name": "Секция 1",
+    "dashboardId": "268ce410-2784-11f1-9f64-c787c2280ca6",
+    "points": [
+      { "x": 249, "y": 718 },
+      { "x": 249, "y": 424 },
+      { "x": 286, "y": 416 },
+      { "x": 292, "y": 382 },
+      { "x": 317, "y": 371 },
+      { "x": 333, "y": 320 },
+      { "x": 359, "y": 318 },
+      { "x": 364, "y": 285 },
+      { "x": 467, "y": 263 },
+      { "x": 538, "y": 276 },
+      { "x": 571, "y": 245 },
+      { "x": 661, "y": 239 },
+      { "x": 712, "y": 254 },
+      { "x": 711, "y": 656 },
+      { "x": 428, "y": 768 }
+    ],
+    "color": "#f0ff24",
+    "originalWidth": 2112,
+    "originalHeight": 1208
+  }
+]
+</pre>
+            </div>
+
+            <h3 id="zones-params">Описание параметров</h3>
+            <table>
+                <tr>
+                    <th>Параметр</th>
+                    <th>Тип данных</th>
+                    <th>Описание</th>
+                </tr>
+                <tr>
+                    <td><strong>id</strong></td>
+                    <td>Строка</td>
+                    <td>Уникальный номер зоны. Конфигуратор создает его сам (например, <code>zone_1778763382727_8jkm</code>). Менять его вручную не нужно, главное — чтобы он не повторялся у других зон.</td>
+                </tr>
+                <tr>
+                    <td><strong>name</strong></td>
+                    <td>Строка</td>
+                    <td>Название зоны. Пользователь увидит его во всплывающей подсказке при наведении курсора.</td>
+                </tr>
+                <tr>
+                    <td><strong>dashboardId</strong></td>
+                    <td>Строка</td>
+                    <td>UUID дашборда для перехода по клику. Если оставить пустым, зона будет подсвечиваться, но переход на смежный дашборд осуществлен не будет.<br><br><em>(Что такое UUID и как его найти смотри в разделе 2).</em></td>
+                </tr>
+                <tr>
+                    <td><strong>points</strong></td>
+                    <td>Массив объектов</td>
+                    <td>Координаты <code>x</code> и <code>y</code> для точек, по которым строится контур зоны. Координаты считаются в пикселях от исходного размера картинки.<br><br> Минимальное количество точек для создания зоны - 3 точки. Последняя точка автоматически соединится с первой.</td>
+                </tr>
+                <tr>
+                    <td><strong>color</strong></td>
+                    <td>Строка (HEX)</td>
+                    <td>Цвет подсветки при наведении. Выбирается на палтире внутри конфигуратора в формате HEX (например, <code>#f0ff24</code> — жёлтый).</td>
+                </tr>
+                <tr>
+                    <td><strong>originalWidth</strong></td>
+                    <td>Целое число</td>
+                    <td>Ширина исходной подложки на которой вы создаете зону. Опираясь на это значение, виджет понимает, как масштабировать зону, если изменится размер окна виджета.</td>
+                </tr>
+                <tr>
+                    <td><strong>originalHeight</strong></td>
+                    <td>Целое число</td>
+                    <td>Высота исходной картинки. Работает в паре с <code>originalWidth</code>.</td>
+                </tr>
+            </table>
+
+            <details style="margin-top: 20px;">
+    <summary>💡 Как работает масштабирование зон</summary>
+    <p>Виджет автоматически подстраивает нарисованные зоны под размер виджета. Зоны всегда останутся привязанными к своим объектам.</p>
+    <p><b>ВАЖНО!</b> При наличии сконфигурированных зон, изменение подложки может привести к смещению зон. Отрисуйте зоны снова или поправьте готовую конфигурацию в ручном режиме.</p>
+</details>
+
+            <h3 style="margin-top: 30px;" id="zones-editor">Создание зон через конфигуратор</h3>
+			<p>Прежде чем начать, перейдите в настройки виджета (раздел <b>«КОНФИГУРИРОВАНИЕ ЗОН»</b>) и включите две опции:</p>
+            <ul style="margin-left: 20px; margin-bottom: 20px; list-style-type: circle;">
+                <li><b>«Включить интерактивные этажи»</b> — для запуска функционала.</li>
+                <li><b>«Режим редактирования этажей»</b> — для доступа к кнопке запуска конфигуратора.</li>
+            </ul>
+            <p>Примените настройки.</p>
+            <p>Как нарисовать зону:</p>
+            <ol style="margin-left: 20px; margin-bottom: 20px;">
+                <li>Кликните по иконке карандаша в правом нижнем углу виджета. Кнопка станет синей, и откроется панель конфигуратора.</li>
+                <li>Впишите название зоны, вставьте UUID дашборда и выберите цвет подсветки будущей зоны.</li>
+                <li>Нажмите <b>«✏️ Начать рисовать»</b>. Кликайте мышью по границам объекта на плане. Каждое нажатие — новая точка.</li>
+                <li>Что бы удалить крайнюю выставленную точку, нажмите <b>«↩️ Отмена»</b>.</li>
+                <li>Когда контур готов, нажмите <b>«💾 Сохранить»</b>. Зона появится в списке и на подложке.</li>
+                <li>Выйдите из редактора (снова нажмите на карандаш), а затем сохраните дашборд.</li>
+                <li>После завершения конфигурирования, отключите опцию «Режим редактирования зон» в настройках виджета.</li>
+            </ol>
+
+            <h3 id="zones-list">Управление списком зон</h3>
+            <p>Внизу панели конфигуратора находится список всех созданных зон. Здесь вы можете:</p>
+            <ul style="margin-left: 20px; margin-bottom: 20px; list-style-type: circle;">
+                <li><b>«Редактировать»</b> (кнопка «Ред.») — на плане появятся точки зоны. Взаимодейтсвуйте с точками мышью, чтобы поправить контур.</li>
+                <li><b>«Удалить»</b> (кнопка «Уд.») — полностью стирает сконфигурированную зону.</li>
+                <li><b>«Экспорт JSON»</b> — Копирует код сконфигурированных зон. Удобно, если нужно перенести настройки на другой стенд или сделать бэкап.</li>
+            </ul>
+
+            <h3 id="zones-manual">Ручное редактирование зон</h3>
+            <p>В некоторых случаях быстрее править код напрямую, чем изменять зоны в редакторе. Для этого найдите поле <b>«Конфигурация зон»</b> в настройках виджета. Ручная правка полезна, когда нужно:</p>
+            <ul style="margin-left: 20px; margin-bottom: 15px; list-style-type: circle;">
+                <li>Быстро скопировать зоны с одного дашборда на другой.</li>
+                <li>Массово заменить UUID или цвета (через поиск/замену).</li>
+                <li>Восстановить работу из бэкапа.</li>
+                <li>Скорректировать точки, если зоны сместились.</li>
+            </ul>
+
+            <details>
+                <summary>⚠️ Правила ручной правки</summary>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>Следите за скобками — это должен быть валидный JSON-массив.</li>
+                    <li>У каждой зоны обязательно должны быть поля: <code>id</code>, <code>name</code>, <code>points</code>, <code>color</code>, <code>originalWidth</code>, <code>originalHeight</code>.</li>
+                    <li>Если переход не нужен, оставьте поле <code>dashboardId</code> пустым (<code>""</code>).</li>
+                </ul>
+            </details>
+
+            <h3 id="zones-config">Параметры панели конфигуратора</h3>
+            <table>
+                <tr>
+                    <th>Элемент управления</th>
+                    <th>Описание</th>
+                </tr>
+                <tr>
+                    <td><strong>Название этажа</strong></td>
+                    <td>Имя, которое всплывает в подсказке при наведении на зону.</td>
+                </tr>
+                <tr>
+                    <td><strong>ID дашборда</strong></td>
+                    <td>UUID дашборда для перехода по клику.</td>
+                </tr>
+                <tr>
+                    <td><strong>Цвет подсветки</strong></td>
+                    <td>Цвет заливки зоны.</td>
+                </tr>
+                <tr>
+                    <td><strong>Точки (маркеры)</strong></td>
+                    <td>Опорные точки, формирующие зону.</td>
+                </tr>
+            </table>
+            <details>
+                <summary>⚠️ Напоминание</summary>
+                <p>После создания зон обязательно <b>сохраните сам дашборд<b>, чтобы не потерять изменения при обновлении страницы.</p>
+                <p style="margin-top: 10px;">Запускать конфигуратор только ради копирования JSON-кода не нужно — актуальный код всегда доступен в настройках виджета (поле «Конфигурация зон»).</p>
+            </details>
+
+            <p style="margin-top: 30px; margin-bottom: 15px;"> Процесс работы конфигуратором и создание интерактивных зон показан в этом видео:</p>
+
+            <button class="btn btn-video" onclick="openVideo('https://github.com/AlexGasser00/Docs_vid/raw/main/section4.zone_configuration.mp4')">
+                ▶ : Настройка интерактивных зон
+            </button>
+        </section>
+
+    </main>
+
+    <div class="modal-overlay" id="videoModal" onclick="closeVideo(event)">
+    <div class="modal-content">
+        <button class="close-modal" onclick="closeVideo(event)">&times;</button>
+        <div class="video-container" style="padding-bottom: 0; height: auto;">
+            <video id="videoFrame" controls style="width: 100%; border-radius: 8px; display: block; background: #000;">
+                <source src="" type="video/mp4">
+                Ваш браузер не поддерживает встроенное видео.
+            </video>
+        </div>
+    </div>
+</div>
+
+    <div class="toast" id="toastMessage">Скопировано!</div>
+
+    <script>
+        // Анимация старта
+        document.addEventListener('DOMContentLoaded', () => {
+            const splash = document.getElementById('splashScreen');
+            const content = document.getElementById('mainContent');
+            const sidebar = document.getElementById('sidebar');
+
+            setTimeout(() => {
+                splash.classList.add('hidden');
+                content.classList.add('visible');
+                sidebar.classList.add('visible');
+                updateJson(); // Инициализация генератора
+            }, 2000);
+        });
+
+        // 1. Логика генератора JSON
+        function updateJson() {
+            const btn = {
+                id: parseInt(document.getElementById('gen-id').value) || 0,
+                name: document.getElementById('gen-name').value,
+                dashboardId: document.getElementById('gen-dash').value,
+                column: "main",
+                orderInColumn: 0,
+                iconType: document.getElementById('gen-icon').value,
+                alarmKey: document.getElementById('gen-alarm').value
+            };
+            
+            // Форматируем JSON и исправляем двойное экранирование \n
+            let jsonStr = JSON.stringify(btn, null, 2).replace(/\\\\n/g, '\\n');
+            
+            document.getElementById('json-output').textContent = "[\n" + "  " + jsonStr.replace(/\n/g, '\n  ') + "\n]";
+        }
+
+        function copyJson() {
+            const text = document.getElementById('json-output').textContent;
+            copyTextToClipboard(text, "JSON скопирован в буфер обмена!");
+        }
+
+        // 2. Логика копирования иконок
+        function copyText(text) {
+            copyTextToClipboard(text, `Иконка '${text}' скопирована!`);
+        }
+
+        function copyTextToClipboard(text, msg) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(msg);
+            }).catch(err => {
+                console.error('Ошибка копирования: ', err);
+            });
+        }
+
+        // 3. Уведомления (Toast)
+        function showToast(message) {
+            const toast = document.getElementById('toastMessage');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Логика модального окна видео
+        const modal = document.getElementById('videoModal');
+        const video = document.getElementById('videoFrame');
+
+        function openVideo(url) {
+            const safeUrl = encodeURI(decodeURI(url)); 
+            video.src = safeUrl;
+            modal.classList.add('active');
+            
+            video.play().catch(err => {
+                console.log("Автозапуск заблокирован браузером, нужен клик пользователя.");
+            });
+        }
+
+        function closeVideo(e) {
+            if(e.target === modal || e.target.className === 'close-modal') {
+                modal.classList.remove('active');
+                video.pause();
+                
+                // Правильный сброс плеера без вызова ошибки
+                video.removeAttribute('src'); 
+                video.load(); 
+            }
+        }
+
+        // Тихий отлов ошибок (без всплывающих окон)
+        video.onerror = function() {
+            // Если источник пустой (мы его сами очистили при закрытии) — ничего не делаем
+            if (!video.src || video.src === window.location.href) return;
+            
+            console.error("Ошибка загрузки видео по ссылке: " + video.src);
+        };
+		function previewScaling() {
+    const getVal = (id) => document.getElementById(id);
+    const setTxt = (id, val) => { if(getVal(id)) getVal(id).textContent = val; };
+
+    // Извлекаем значения
+    const w = getVal('range-w').value;
+    const h = getVal('range-h').value;
+    const f = getVal('range-f').value;
+    const s = getVal('range-s').value;
+    const top = getVal('range-top').value;
+    const x = getVal('range-x').value;
+    const y = getVal('range-y').value;
+
+    // Обновляем текстовые индикаторы
+    setTxt('val-w', w);
+    setTxt('val-h', h);
+    setTxt('val-f', f);
+    setTxt('val-s', s);
+    setTxt('val-top', top);
+    setTxt('val-x', x);
+    setTxt('val-y', y);
+
+    const btns = [getVal('preview-btn-1'), getVal('preview-btn-2')];
+    const scale = 0.55; 
+
+    btns.forEach((btn, index) => {
+        if (!btn) return;
+
+        // Сохраняем исходный текст (с \n) во временном атрибуте
+        if (!btn.dataset.raw) btn.dataset.raw = btn.innerText;
+
+        // Применяем геометрию
+        btn.style.width = (w * scale) + "px";
+        btn.style.height = (h * scale) + "px";
+        btn.style.fontSize = (f * scale) + "px";
+        
+        // Позиция X (центрирование относительно точки X%)
+        btn.style.left = `calc(${x}% - ${(x * (w * scale)) / 100}px)`;
+        
+        // Позиция Y
+        const offset = index * (parseInt(h) + parseInt(s)) * scale;
+        btn.style.top = (parseInt(y) * 2.5 + parseInt(top) * scale + offset) + "px";
+        
+        // Рендерим переносы строк
+        btn.innerHTML = btn.dataset.raw.replace(/\\n/g, '<br>');
+    });
+}
+
+// Первичный запуск
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(previewScaling, 500);
+});
+    </script>
+</body>
+</html>
